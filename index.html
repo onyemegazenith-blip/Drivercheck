@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14213d">
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<title>Driver Check</title>
+<style>
+:root{--ink:#14213d;--bg:#eef1f4;--card:#fff;--line:#d5dbe3;--acc:#f2a900;--mut:#5b6678;--ok:#1f7a4d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding-bottom:80px}
+header{background:var(--ink);color:#fff;padding:calc(14px + env(safe-area-inset-top)) 18px 14px}
+header h1{margin:0;font-size:21px}header p{margin:2px 0 0;color:#b9c3d6;font-size:14px}
+main{padding:16px;max-width:620px;margin:auto}
+section{display:none}section.on{display:block}
+h2{font-size:19px;margin:20px 0 6px}
+p.h{color:var(--mut);margin:0 0 10px;font-size:15px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+label{display:block;font-weight:600;margin:10px 0 4px;font-size:15px}
+input,textarea,select{width:100%;font:inherit;padding:11px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+textarea{min-height:70px}
+button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:12px 16px;background:var(--ink);color:#fff;margin-top:12px;width:100%}
+button.s{background:none;color:var(--mut);width:auto;padding:4px 8px;margin:0;font-weight:400}
+.chk{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.chk:last-child{border:0}.chk input{width:26px;height:26px;flex:none;accent-color:var(--ink)}
+.item{border-top:1px solid var(--line);padding:10px 0}.item:first-child{border:0}
+.item small{color:var(--mut)}
+.driver{background:#fff6dc;border-left:5px solid var(--acc);padding:10px 12px;border-radius:6px;margin-top:8px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;color:var(--mut);border-radius:0;margin:0;padding:14px 4px;border-top:3px solid transparent}
+nav button.on{color:var(--ink);border-top-color:var(--acc)}
+.t{display:inline-block;font-size:13px;padding:2px 8px;border-radius:20px;background:#e3e8f0}
+</style></head><body>
+<header><h1>Driver Check</h1><p>Know what moves you. Remove what stops you.</p></header>
+<main>
+
+<section id="today" class="on">
+<h2>Today</h2><p class="h">Do this every day. It takes 2 minutes.</p>
+<div class="box" id="daily"></div>
+<div class="box">
+<label>What did I do or decide? (time, money, choice)</label>
+<textarea id="act" placeholder="Example: I traded 2 hours"></textarea>
+<button onclick="addAct()">Save</button></div>
+<h2>Last 7 days</h2><div class="box" id="acts"></div>
+</section>
+
+<section id="driver">
+<h2>Find my driving force</h2>
+<p class="h">Pick one thing you did. Ask "why?" 3 times. The last answer is your driver.</p>
+<div class="box">
+<label>What I did</label><input id="d0">
+<label>Why? (1)</label><input id="d1">
+<label>Why? (2)</label><input id="d2">
+<label>Why? (3) – the real driver</label><input id="d3">
+<button onclick="addDrv()">Save</button></div>
+<h2>My answers</h2><p class="h">If the same driver shows up many times, that is your driving force.</p>
+<div class="box" id="drvs"></div>
+</section>
+
+<section id="week">
+<h2>Weekly review (15 minutes)</h2>
+<div class="box">
+<label>My goal (one sentence)</label><textarea id="goal"></textarea>
+<label>What I planned this week</label><textarea id="plan"></textarea>
+<label>What I really did</label><textarea id="did"></textarea>
+<label>1. What moved me forward?</label><textarea id="q1"></textarea>
+<label>2. What held me back?</label><textarea id="q2"></textarea>
+<label>3. What will I remove or change next week?</label><textarea id="q3"></textarea>
+<button onclick="saveWeek()">Save this week</button></div>
+
+<h2>Hindrance list</h2>
+<p class="h">Write what happened right before you failed to act. Remove one suspect for 7 days. If results get better, you found the cause.</p>
+<div class="box">
+<label>The suspect</label><input id="hs" placeholder="Example: phone in bed, a certain person, fear">
+<label>Type</label><select id="ht"><option>Inside (fear, laziness, anger, habit)</option><option>Outside (people, noise, place)</option></select>
+<label>What I will do about it</label><input id="ha" placeholder="Example: delete the app for 7 days">
+<button onclick="addHin()">Save</button></div>
+<div class="box" id="hins"></div>
+
+<h2>Past weeks</h2><div class="box" id="weeks"></div>
+</section>
+
+</main>
+<nav><button class="on" data-t="today">Today</button><button data-t="driver">Driver</button><button data-t="week">Week</button></nav>
+<script>
+const $=id=>document.getElementById(id);
+const get=(k,d)=>{try{return JSON.parse(localStorage.getItem(k))||d}catch(e){return d}};
+const put=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){alert('Cannot save on this browser.')}};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const day=()=>new Date().toISOString().slice(0,10);
+const RULES=['I followed my daily plan','I kept my one rule','I did not decide when angry, excited or tired','I took one small action on my goal'];
+
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button,section').forEach(e=>e.classList.remove('on'));
+  b.classList.add('on');$(b.dataset.t).classList.add('on');scrollTo(0,0)});
+
+function renderDaily(){
+  const s=get('daily',{});const t=s[day()]||{};
+  $('daily').innerHTML='<b>Daily checks</b>'+RULES.map((r,i)=>`<label class="chk"><input type="checkbox" ${t[i]?'checked':''} onchange="tick(${i},this.checked)"><span style="font-weight:400">${r}</span></label>`).join('');
+}
+function tick(i,v){const s=get('daily',{});s[day()]=s[day()]||{};s[day()][i]=v;put('daily',s)}
+function addAct(){const v=$('act').value.trim();if(!v)return;const a=get('acts',[]);a.unshift({d:day(),t:v});put('acts',a);$('act').value='';renderActs()}
+function renderActs(){
+  const lim=Date.now()-7*864e5;
+  const a=get('acts',[]).map((x,i)=>({...x,i})).filter(x=>new Date(x.d)>=lim);
+  $('acts').innerHTML=a.length?a.map(x=>`<div class="item"><small>${x.d}</small><br>${esc(x.t)} <button class="s" onclick="del('acts',${x.i},renderActs)">remove</button></div>`).join(''):'Nothing yet. Write what you did today.';
+}
+function addDrv(){
+  const o={a:$('d0').value.trim(),w1:$('d1').value.trim(),w2:$('d2').value.trim(),w3:$('d3').value.trim()};
+  if(!o.a||!o.w3){alert('Fill "What I did" and the 3rd why.');return}
+  const a=get('drvs',[]);a.unshift(o);put('drvs',a);['d0','d1','d2','d3'].forEach(i=>$(i).value='');renderDrv()}
+function renderDrv(){
+  const a=get('drvs',[]);
+  $('drvs').innerHTML=a.length?a.map((x,i)=>`<div class="item"><b>${esc(x.a)}</b><br><small>${esc(x.w1)} → ${esc(x.w2)}</small><div class="driver">Driver: ${esc(x.w3)}</div><button class="s" onclick="del('drvs',${i},renderDrv)">remove</button></div>`).join(''):'No answers yet.';
+}
+function addHin(){const s=$('hs').value.trim();if(!s)return;const a=get('hins',[]);a.unshift({s,t:$('ht').value.split(' ')[0],a:$('ha').value.trim(),d:day()});put('hins',a);$('hs').value='';$('ha').value='';renderHin()}
+function renderHin(){
+  const a=get('hins',[]);
+  $('hins').innerHTML=a.length?a.map((x,i)=>`<div class="item"><span class="t">${x.t}</span> <b>${esc(x.s)}</b><br><small>${x.d}</small><br>${esc(x.a)} <button class="s" onclick="del('hins',${i},renderHin)">done / remove</button></div>`).join(''):'No suspects yet.';
+}
+function saveWeek(){
+  const o={d:day()};['goal','plan','did','q1','q2','q3'].forEach(k=>o[k]=$(k).value.trim());
+  if(!o.q1&&!o.q2&&!o.q3){alert('Answer the 3 questions first.');return}
+  const a=get('weeks',[]);a.unshift(o);put('weeks',a);['plan','did','q1','q2','q3'].forEach(k=>$(k).value='');put('goal',o.goal);renderWeeks()}
+function renderWeeks(){
+  const a=get('weeks',[]);
+  $('weeks').innerHTML=a.length?a.map((x,i)=>`<div class="item"><b>${x.d}</b><br><small>Moved me:</small> ${esc(x.q1)}<br><small>Held me back:</small> ${esc(x.q2)}<br><small>Change:</small> ${esc(x.q3)}<br><button class="s" onclick="del('weeks',${i},renderWeeks)">remove</button></div>`).join(''):'No weeks saved yet.';
+}
+function del(k,i,f){if(!confirm('Remove this?'))return;const a=get(k,[]);a.splice(i,1);put(k,a);f()}
+$('goal').value=get('goal','')||'';
+renderDaily();renderActs();renderDrv();renderHin();renderWeeks();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script></body></html>
